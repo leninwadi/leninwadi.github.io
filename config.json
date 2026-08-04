@@ -1,0 +1,16 @@
+{
+  "name": "Your Name",
+  "tagline": "Selected work",
+  "location": "Lisbon, PT",
+  "email": "hello@example.com",
+  "links": [
+    { "label": "Instagram", "url": "https://instagram.com/yourhandle" }
+  ],
+  "footer": "All photographs © Your Name. Please ask before reusing.",
+
+  "sort": "date-desc",
+  "show_exif": true,
+  "row_height": 360,
+  "thumb_size": 1400,
+  "full_size": 2560
+}

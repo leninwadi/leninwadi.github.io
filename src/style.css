@@ -1,0 +1,336 @@
+/* ---------------------------------------------------------------
+   Palette borrows from the cyanotype — one of photography's oldest
+   printing processes — rather than a neutral accent.
+   --------------------------------------------------------------- */
+:root {
+  --paper: #F5F6F4;
+  --paper-sink: #EAECE8;
+  --ink: #12141A;
+  --muted: #767E86;
+  --rule: #D9DCD7;
+  --blue: #1D4E89;
+  --blue-tint: #DCE6F1;
+
+  --display: "Archivo", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --gap: 20px;
+  --pad: clamp(20px, 5vw, 68px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-variation-settings: "wdth" 100;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { display: block; max-width: 100%; }
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  z-index: 100;
+}
+.skip:focus { left: 0; }
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
+/* ----------------------------- masthead ----------------------------- */
+
+.masthead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 28px;
+  padding: clamp(40px, 9vw, 96px) var(--pad) 22px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 8.5vw, 6.5rem);
+  font-weight: 700;
+  font-variation-settings: "wdth" 116;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.masthead__meta {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.85;
+  color: var(--muted);
+  padding-bottom: 0.5em;
+}
+
+.masthead__meta p { margin: 0; }
+
+.tagline {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+
+.count { color: var(--blue); }
+
+.masthead__meta a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  transition: color 0.15s, border-color 0.15s;
+}
+.masthead__meta a:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+/* ------------------------------ frames ------------------------------ */
+
+.lead { padding: clamp(28px, 5vw, 56px) var(--pad) 0; }
+
+.gallery { padding: var(--gap) var(--pad) clamp(48px, 8vw, 96px); }
+
+.row {
+  display: flex;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.frame {
+  position: relative;
+  margin: 0;
+  cursor: zoom-in;
+  background: var(--paper-sink);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.frame.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Contact-sheet numbering: the gallery is one continuous roll, and the
+   index tells you where in it you are. */
+.frame__no {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  background: var(--blue);
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.frame:hover .frame__no,
+.frame:focus-within .frame__no { opacity: 1; }
+
+.frame__btn {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: zoom-in;
+  width: 100%;
+}
+
+.lead .frame {
+  width: 100%;
+  max-height: min(72vh, 760px);
+  aspect-ratio: var(--ratio, 3 / 2);
+  background: none;
+}
+
+/* A portrait lead sits against the left margin and leaves the rest as
+   white space, the way an opening plate runs in print. */
+.lead .frame img { object-fit: contain; object-position: left center; }
+
+/* Single column below the point where justified rows stop earning their keep */
+@media (max-width: 640px) {
+  .gallery { padding-top: 0; }
+  .row {
+    display: block;
+    margin-bottom: 0;
+  }
+  .row .frame {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: var(--ratio);
+    margin-bottom: var(--gap);
+  }
+  .frame__no { opacity: 1; }
+}
+
+.empty {
+  padding: 12vh var(--pad);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 46ch;
+  line-height: 1.9;
+}
+
+.empty code,
+.colophon code {
+  background: var(--blue-tint);
+  color: var(--blue);
+  padding: 1px 5px;
+}
+
+/* ------------------------------ footer ------------------------------ */
+
+.footer {
+  border-top: 1px solid var(--rule);
+  padding: 28px var(--pad) clamp(40px, 7vw, 72px);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  justify-content: space-between;
+}
+
+.footer p { margin: 0; }
+
+/* ----------------------------- lightbox ----------------------------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 48px);
+  animation: fade 0.22s ease;
+}
+
+.lightbox[hidden] { display: none; }
+
+@keyframes fade { from { opacity: 0; } }
+
+.lightbox__figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-height: 100%;
+}
+
+.lightbox__figure img {
+  max-height: calc(100vh - 190px);
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.9;
+  max-width: 62ch;
+}
+
+.label b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.label .sep { color: var(--rule); padding: 0 2px; }
+
+.label .cap {
+  display: block;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.lightbox__close,
+.lightbox__nav {
+  position: absolute;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.lightbox__close:hover,
+.lightbox__nav:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--paper);
+}
+
+.lightbox__close {
+  top: clamp(14px, 3vw, 28px);
+  right: clamp(14px, 3vw, 28px);
+  padding: 7px 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lightbox__nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  font-size: 1rem;
+}
+
+.lightbox__nav--prev { left: clamp(10px, 2vw, 24px); }
+.lightbox__nav--next { right: clamp(10px, 2vw, 24px); }
+
+@media (max-width: 640px) {
+  .lightbox__nav { top: auto; bottom: 18px; transform: none; }
+  .lightbox__figure img { max-height: calc(100vh - 230px); }
+}
+
+body.is-locked { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
+  .frame { opacity: 1; transform: none; }
+}

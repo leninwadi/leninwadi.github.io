@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{name}} — {{tagline}}</title>
+<meta name="description" content="Photographs by {{name}}.">
+
+<meta property="og:title" content="{{name}} — {{tagline}}">
+<meta property="og:type" content="website">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23F5F6F4'/><rect x='3' y='4.5' width='10' height='7' fill='none' stroke='%231D4E89' stroke-width='1.4'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<a class="skip" href="#gallery">Skip to photographs</a>
+
+<header class="masthead">
+  <div class="masthead__name">
+    <h1>{{name}}</h1>
+  </div>
+  <div class="masthead__meta" id="meta">
+    <p class="tagline">{{tagline}}</p>
+  </div>
+</header>
+
+<main>
+  <section class="lead" id="lead" aria-label="Lead photograph"></section>
+
+  <section class="gallery" id="gallery" aria-label="Photographs"></section>
+
+  <p class="empty" id="empty" hidden>
+    No frames yet. Add images to the <code>photos/</code> folder and push to publish them.
+  </p>
+</main>
+
+<footer class="footer">
+  <p id="footer-text"></p>
+  <p class="colophon">Built from the <code>photos/</code> folder.</p>
+</footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photograph viewer" hidden>
+  <button class="lightbox__close" id="lb-close" aria-label="Close viewer">Close</button>
+  <button class="lightbox__nav lightbox__nav--prev" id="lb-prev" aria-label="Previous photograph">←</button>
+  <button class="lightbox__nav lightbox__nav--next" id="lb-next" aria-label="Next photograph">→</button>
+
+  <figure class="lightbox__figure">
+    <img id="lb-img" alt="">
+    <figcaption class="label" id="lb-label"></figcaption>
+  </figure>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
