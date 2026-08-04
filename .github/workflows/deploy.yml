@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Pillow
-        run: pip install --quiet Pillow
+        run: pip install --quiet Pillow pillow-heif
 
       - name: Build gallery
         run: python scripts/build_gallery.py

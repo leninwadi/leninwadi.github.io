@@ -11,18 +11,30 @@ Run locally with:  python scripts/build_gallery.py
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageOps
 
+try:  # iPhones shoot HEIC by default; Pillow needs a plug-in to read it.
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    HEIC_OK = True
+except ImportError:
+    HEIC_OK = False
+
 ROOT = Path(__file__).resolve().parent.parent
 PHOTOS_IN = ROOT / "photos"
 SRC = ROOT / "src"
 OUT = ROOT / "_site"
 
-SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
+SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".heic", ".heif"}
+
+# Camera RAW needs a full decoder; flagged by name so the log can say so.
+RAW_SUFFIXES = {".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".orf", ".rw2", ".pef"}
 
 # EXIF tag numbers we care about.
 TAG_MAKE, TAG_MODEL = 0x010F, 0x0110
@@ -129,7 +141,19 @@ def resize(img: Image.Image, longest: int) -> Image.Image:
     return img.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
 
 
-def process(path: Path, cfg: dict) -> dict | None:
+def safe_name(path: Path, taken: set[str]) -> str:
+    """A URL-safe stem that stays unique across sub-folders and odd characters."""
+    rel = path.relative_to(PHOTOS_IN).with_suffix("")
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", "-".join(rel.parts)).strip("-.") or "frame"
+    candidate, n = slug, 2
+    while candidate.lower() in taken:
+        candidate = f"{slug}-{n}"
+        n += 1
+    taken.add(candidate.lower())
+    return candidate
+
+
+def process(path: Path, cfg: dict, taken: set[str]) -> dict | None:
     try:
         with Image.open(path) as raw:
             img = ImageOps.exif_transpose(raw)
@@ -137,8 +161,8 @@ def process(path: Path, cfg: dict) -> dict | None:
             if img.mode not in ("RGB", "L"):
                 img = img.convert("RGB")
 
-            stem = path.stem
-            full_name, thumb_name = f"{stem}.webp", f"{stem}.webp"
+            stem = safe_name(path, taken)
+            full_name = thumb_name = f"{stem}.webp"
 
             resize(img, cfg["full_size"]).save(
                 OUT / "photos" / full_name, "WEBP", quality=86, method=5
@@ -163,7 +187,7 @@ def process(path: Path, cfg: dict) -> dict | None:
         "thumb": f"thumbs/{thumb_name}",
         "w": width,
         "h": height,
-        "name": stem,
+        "name": path.stem,
         "caption": caption,
         "exif": exif if cfg["show_exif"] else {},
     }
@@ -190,10 +214,33 @@ def main() -> int:
     (OUT / "thumbs").mkdir(parents=True)
 
     PHOTOS_IN.mkdir(exist_ok=True)
-    files = sorted(p for p in PHOTOS_IN.iterdir() if p.suffix.lower() in SUFFIXES)
+    everything = [p for p in PHOTOS_IN.rglob("*") if p.is_file() and not p.name.startswith(".")]
+    files = sorted(p for p in everything if p.suffix.lower() in SUFFIXES)
+    raw = [p for p in everything if p.suffix.lower() in RAW_SUFFIXES]
+    other = [p for p in everything
+             if p.suffix.lower() not in SUFFIXES | RAW_SUFFIXES | {".txt"}]
+
     print(f"Found {len(files)} image(s) in photos/")
 
-    photos = [p for p in (process(f, cfg) for f in files) if p]
+    if raw:
+        print(f"\n!! Ignored {len(raw)} camera RAW file(s) — these can't be read directly.")
+        print("   Export them as JPEG and add those instead. Example:")
+        for p in raw[:4]:
+            print(f"     {p.relative_to(PHOTOS_IN)}")
+    if other:
+        kinds = sorted({p.suffix.lower() or "(no extension)" for p in other})
+        print(f"\n!! Ignored {len(other)} unrecognised file(s): {', '.join(kinds)}")
+    if any(p.suffix.lower() in {".heic", ".heif"} for p in files) and not HEIC_OK:
+        print("\n!! HEIC files found but pillow-heif isn't installed — they will fail below.")
+    if not files:
+        print("\n   Nothing to build. Check that image files really are inside photos/.")
+
+    taken: set[str] = set()
+    photos = [p for p in (process(f, cfg, taken) for f in files) if p]
+
+    skipped = len(files) - len(photos)
+    if skipped:
+        print(f"\n!! {skipped} file(s) failed to open — see the errors above.")
     photos = sort_photos(photos, cfg["sort"])
     for i, photo in enumerate(photos, 1):
         photo["frame"] = f"{i:02d}"
