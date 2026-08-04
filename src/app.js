@@ -3,15 +3,18 @@
 
   var GAP = 20;
   var MOBILE = 640;
+  var STORE_KEY = "portfolio-view";
 
   var photos = [];
   var rowHeight = 360;
+  var view = "plates";
   var current = -1;
 
   var galleryEl = document.getElementById("gallery");
   var leadEl = document.getElementById("lead");
   var emptyEl = document.getElementById("empty");
   var metaEl = document.getElementById("meta");
+  var controlsEl = document.getElementById("controls");
   var footerEl = document.getElementById("footer-text");
 
   var lightbox = document.getElementById("lightbox");
@@ -19,7 +22,12 @@
   var lbLabel = document.getElementById("lb-label");
   var lastFocused = null;
 
-  /* --------------------------- setup --------------------------- */
+  /* ---------------------------- boot ---------------------------- */
+
+  try {
+    var saved = window.localStorage.getItem(STORE_KEY);
+    if (saved === "sheet" || saved === "plates") view = saved;
+  } catch (e) { /* private browsing blocks storage; the default is fine */ }
 
   fetch("photos.json")
     .then(function (r) {
@@ -30,63 +38,127 @@
       photos = data.photos || [];
       rowHeight = data.rowHeight || 360;
       renderMeta(data.site || {});
+
       if (!photos.length) {
         emptyEl.hidden = false;
+        leadEl.hidden = true;
         return;
       }
-      renderLead(photos[0]);
-      renderGallery();
-      window.addEventListener("resize", debounce(renderGallery, 150));
+
+      controlsEl.hidden = false;
+      setView(view, true);
+      window.addEventListener("resize", debounce(function () {
+        if (view === "plates") renderPlates();
+      }, 150));
     })
     .catch(function () {
       emptyEl.hidden = false;
-      emptyEl.textContent = "Couldn't load the gallery. Check that photos.json was built.";
+      leadEl.hidden = true;
+      document.querySelector(".empty__title").textContent = "The gallery didn't load.";
+      document.querySelector(".empty__body").textContent =
+        "photos.json is missing. Check that the build step ran.";
     });
 
   function renderMeta(site) {
     var bits = [];
     if (photos.length) {
-      bits.push('<p class="count">' + photos.length + (photos.length === 1 ? " frame" : " frames") + "</p>");
+      bits.push('<span class="count">' + photos.length +
+        (photos.length === 1 ? " frame" : " frames") + "</span>");
     }
-    if (site.location) bits.push("<p>" + esc(site.location) + "</p>");
+    if (site.location) bits.push("<span>" + esc(site.location) + "</span>");
     if (site.email) {
-      bits.push('<p><a href="mailto:' + esc(site.email) + '">' + esc(site.email) + "</a></p>");
+      bits.push('<a href="mailto:' + esc(site.email) + '">' + esc(site.email) + "</a>");
     }
     (site.links || []).forEach(function (link) {
       if (!link.url) return;
-      bits.push('<p><a href="' + esc(link.url) + '" rel="me noopener" target="_blank">' + esc(link.label || link.url) + "</a></p>");
+      bits.push('<a href="' + esc(link.url) + '" rel="me noopener" target="_blank">' +
+        esc(link.label || link.url) + "</a>");
     });
-    metaEl.insertAdjacentHTML("beforeend", bits.join(""));
+    metaEl.innerHTML = bits.join("");
     footerEl.textContent = site.footer || "";
   }
 
-  /* ------------------------- layout ---------------------------- */
+  /* ---------------------------- views --------------------------- */
+
+  function setView(next, initial) {
+    view = next;
+    try { window.localStorage.setItem(STORE_KEY, next); } catch (e) {}
+
+    Array.prototype.forEach.call(
+      controlsEl.querySelectorAll(".toggle__btn"),
+      function (btn) {
+        var on = btn.getAttribute("data-view") === next;
+        btn.classList.toggle("is-on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+    );
+
+    galleryEl.className = "gallery gallery--" + next;
+
+    if (next === "sheet") {
+      leadEl.hidden = true;
+      leadEl.textContent = "";
+      renderSheet();
+    } else {
+      leadEl.hidden = false;
+      renderLead(photos[0]);
+      renderPlates();
+    }
+    if (!initial) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  controlsEl.addEventListener("click", function (event) {
+    var btn = event.target.closest(".toggle__btn");
+    if (btn && btn.getAttribute("data-view") !== view) {
+      setView(btn.getAttribute("data-view"));
+    }
+  });
+
+  /* ---------------------------- frames -------------------------- */
+
+  function techLine(photo) {
+    var e = photo.exif || {};
+    return ["focal", "aperture", "shutter", "iso"]
+      .map(function (k) { return e[k]; })
+      .filter(Boolean)
+      .join("   ");
+  }
 
   function makeFrame(photo, index) {
     var fig = document.createElement("figure");
     fig.className = "frame";
     fig.style.setProperty("--ratio", photo.w + " / " + photo.h);
 
-    var btn = document.createElement("button");
-    btn.className = "frame__btn";
-    btn.setAttribute("aria-label", "Open " + (photo.caption || photo.name));
-    btn.addEventListener("click", function () { open(index); });
-
     var img = document.createElement("img");
     img.src = photo.thumb;
     img.width = photo.w;
     img.height = photo.h;
     img.alt = photo.caption || "";
-    img.loading = index < 4 ? "eager" : "lazy";
+    img.loading = index < 6 ? "eager" : "lazy";
     img.decoding = "async";
+    fig.appendChild(img);
 
     var no = document.createElement("span");
     no.className = "frame__no";
     no.textContent = photo.frame;
-
-    fig.appendChild(img);
     fig.appendChild(no);
+
+    var tech = techLine(photo);
+    if (tech || photo.caption) {
+      var strip = document.createElement("span");
+      strip.className = "frame__exif";
+      strip.textContent = photo.caption ? photo.caption + (tech ? "  ·  " + tech : "") : tech;
+      fig.appendChild(strip);
+    }
+
+    var btn = document.createElement("button");
+    btn.className = "frame__btn";
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Open frame " + photo.frame +
+      (photo.caption ? ": " + photo.caption : ""));
+    btn.addEventListener("click", function () { open(index); });
     fig.appendChild(btn);
+
     return fig;
   }
 
@@ -98,10 +170,10 @@
   }
 
   /**
-   * Justified rows: scale each row of photos to a common height so the row
-   * fills the full measure exactly, the way a picture editor lays out a spread.
+   * Justified rows: each row scales to a shared height so it fills the
+   * measure exactly, the way a picture editor sets a spread.
    */
-  function renderGallery() {
+  function renderPlates() {
     var rest = photos.slice(1);
     galleryEl.textContent = "";
     if (!rest.length) return;
@@ -111,7 +183,6 @@
     var stack = window.innerWidth <= MOBILE;
     var row = [];
 
-    // Height at which this set of photos would exactly fill the measure.
     function heightFor(items) {
       var sum = 0;
       for (var i = 0; i < items.length; i++) {
@@ -136,16 +207,11 @@
     for (var i = 0; i < rest.length; i++) {
       row.push({ photo: rest[i], index: i + 1 });
 
-      if (stack) {
-        emit(row, rowHeight);
-        row = [];
-        continue;
-      }
+      if (stack) { emit(row, rowHeight); row = []; continue; }
 
       var h = heightFor(row);
-      if (h > rowHeight) continue; // row still too sparse to close
+      if (h > rowHeight) continue;
 
-      // Closing before this photo may land nearer the target than after it.
       if (row.length > 1) {
         var last = row[row.length - 1];
         var head = row.slice(0, -1);
@@ -159,12 +225,20 @@
       emit(row, h);
       row = [];
     }
-
-    // The last row keeps its natural height rather than stretching to fill.
     if (row.length) emit(row, Math.min(heightFor(row), rowHeight));
   }
 
-  /* ------------------------ scroll reveal ---------------------- */
+  /** Every frame on the roll, uniform cells on the unexposed rebate. */
+  function renderSheet() {
+    galleryEl.textContent = "";
+    photos.forEach(function (photo, i) {
+      var fig = makeFrame(photo, i);
+      galleryEl.appendChild(fig);
+      observe(fig);
+    });
+  }
+
+  /* ------------------------- scroll reveal ---------------------- */
 
   var observer = "IntersectionObserver" in window
     ? new IntersectionObserver(function (entries) {
@@ -174,7 +248,7 @@
             observer.unobserve(entry.target);
           }
         });
-      }, { rootMargin: "80px" })
+      }, { rootMargin: "90px" })
     : null;
 
   function observe(el) {
@@ -182,7 +256,7 @@
     else el.classList.add("is-visible");
   }
 
-  /* -------------------------- lightbox ------------------------- */
+  /* --------------------------- lightbox ------------------------- */
 
   function open(index) {
     current = index;
@@ -209,7 +283,6 @@
     lbImg.src = photo.src;
     lbImg.alt = photo.caption || photo.name;
     lbLabel.innerHTML = buildLabel(photo);
-    // Warm the neighbours so arrowing through feels instant.
     [1, -1].forEach(function (d) {
       var next = photos[(current + d + photos.length) % photos.length];
       if (next) new Image().src = next.src;
@@ -217,21 +290,14 @@
   }
 
   function buildLabel(photo) {
-    var out = "";
-    if (photo.caption) out += '<span class="cap">' + esc(photo.caption) + "</span>";
-
+    var out = photo.caption ? '<span class="cap">' + esc(photo.caption) + "</span>" : "";
     var e = photo.exif || {};
-    var tech = ["focal", "aperture", "shutter", "iso"]
-      .map(function (k) { return e[k]; })
-      .filter(Boolean);
-
-    var parts = [];
-    parts.push("<b>" + photo.frame + " / " + photos.length + "</b>");
+    var parts = ["<b>" + photo.frame + " / " + photos.length + "</b>"];
     if (e.camera) parts.push(esc(e.camera));
     if (e.lens && e.lens !== e.camera) parts.push(esc(e.lens));
-    if (tech.length) parts.push(esc(tech.join("  ")));
+    var tech = techLine(photo);
+    if (tech) parts.push(esc(tech));
     if (e.date) parts.push(esc(e.date));
-
     return out + parts.join('<span class="sep"> / </span>');
   }
 
@@ -251,7 +317,9 @@
   });
 
   var touchX = null;
-  lightbox.addEventListener("touchstart", function (e) { touchX = e.changedTouches[0].clientX; }, { passive: true });
+  lightbox.addEventListener("touchstart", function (e) {
+    touchX = e.changedTouches[0].clientX;
+  }, { passive: true });
   lightbox.addEventListener("touchend", function (e) {
     if (touchX === null) return;
     var dx = e.changedTouches[0].clientX - touchX;
@@ -259,7 +327,7 @@
     touchX = null;
   }, { passive: true });
 
-  /* --------------------------- helpers ------------------------- */
+  /* --------------------------- helpers -------------------------- */
 
   function esc(value) {
     return String(value).replace(/[&<>"']/g, function (c) {
@@ -269,9 +337,6 @@
 
   function debounce(fn, wait) {
     var timer;
-    return function () {
-      clearTimeout(timer);
-      timer = setTimeout(fn, wait);
-    };
+    return function () { clearTimeout(timer); timer = setTimeout(fn, wait); };
   }
 })();
