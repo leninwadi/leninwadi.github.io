@@ -9,6 +9,7 @@
   var rowHeight = 360;
   var view = "plates";
   var current = -1;
+  var heroIndex = -1;
 
   var galleryEl = document.getElementById("gallery");
   var leadEl = document.getElementById("lead");
@@ -17,6 +18,9 @@
   var controlsEl = document.getElementById("controls");
   var footerEl = document.getElementById("footer-text");
 
+  var topbarEl = document.getElementById("topbar");
+  var heroEl = document.getElementById("top");
+  var stripEl = document.getElementById("filmstrip");
   var lightbox = document.getElementById("lightbox");
   var lbImg = document.getElementById("lb-img");
   var lbLabel = document.getElementById("lb-label");
@@ -37,6 +41,7 @@
     .then(function (data) {
       photos = data.photos || [];
       rowHeight = data.rowHeight || 360;
+      heroIndex = typeof data.heroIndex === "number" ? data.heroIndex : -1;
       renderMeta(data.site || {});
 
       if (!photos.length) {
@@ -46,6 +51,7 @@
       }
 
       controlsEl.hidden = false;
+      buildFilmstrip();
       setView(view, true);
       window.addEventListener("resize", debounce(function () {
         if (view === "plates") renderPlates();
@@ -100,8 +106,13 @@
       leadEl.textContent = "";
       renderSheet();
     } else {
-      leadEl.hidden = false;
-      renderLead(photos[0]);
+      if (heroIndex < 0) {
+        leadEl.hidden = false;
+        renderLead(photos[0]);
+      } else {
+        leadEl.hidden = true;
+        leadEl.textContent = "";
+      }
       renderPlates();
     }
     if (!initial) window.scrollTo({ top: 0, behavior: "smooth" });
@@ -174,7 +185,12 @@
    * measure exactly, the way a picture editor sets a spread.
    */
   function renderPlates() {
-    var rest = photos.slice(1);
+    var skip = heroIndex < 0 ? 0 : heroIndex;
+    var rest = [];
+    photos.forEach(function (photo, i) {
+      if (i !== skip) rest.push({ photo: photo, index: i });
+    });
+
     galleryEl.textContent = "";
     if (!rest.length) return;
 
@@ -205,7 +221,7 @@
     }
 
     for (var i = 0; i < rest.length; i++) {
-      row.push({ photo: rest[i], index: i + 1 });
+      row.push(rest[i]);
 
       if (stack) { emit(row, rowHeight); row = []; continue; }
 
@@ -283,6 +299,7 @@
     lbImg.src = photo.src;
     lbImg.alt = photo.caption || photo.name;
     lbLabel.innerHTML = buildLabel(photo);
+    syncFilmstrip();
     [1, -1].forEach(function (d) {
       var next = photos[(current + d + photos.length) % photos.length];
       if (next) new Image().src = next.src;
@@ -326,6 +343,61 @@
     if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
     touchX = null;
   }, { passive: true });
+
+  /* ---------------------------- topbar -------------------------- */
+
+  // The bar sits white over the opening photograph, then turns to ink on paper.
+  (function watchTopbar() {
+    if (!heroVisible()) {
+      document.body.classList.add("no-hero");
+      topbarEl.classList.add("is-past");
+      return;
+    }
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        topbarEl.classList.toggle("is-past", !entries[0].isIntersecting);
+      }, { rootMargin: "-70px 0px 0px 0px" }).observe(heroEl);
+    } else {
+      window.addEventListener("scroll", function () {
+        topbarEl.classList.toggle("is-past", window.scrollY > window.innerHeight - 70);
+      }, { passive: true });
+    }
+  })();
+
+  function heroVisible() {
+    return !!heroEl && !!heroEl.querySelector(".hero__img");
+  }
+
+  /* --------------------------- filmstrip ------------------------ */
+
+  function buildFilmstrip() {
+    stripEl.textContent = "";
+    photos.forEach(function (photo, i) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "filmstrip__thumb";
+      btn.setAttribute("aria-label", "Frame " + photo.frame);
+      var img = document.createElement("img");
+      img.src = photo.thumb;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      btn.appendChild(img);
+      btn.addEventListener("click", function () { current = i; show(); });
+      stripEl.appendChild(btn);
+    });
+  }
+
+  function syncFilmstrip() {
+    var thumbs = stripEl.children;
+    for (var i = 0; i < thumbs.length; i++) {
+      thumbs[i].classList.toggle("is-on", i === current);
+    }
+    var active = thumbs[current];
+    if (active && active.scrollIntoView) {
+      active.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    }
+  }
 
   /* --------------------------- helpers -------------------------- */
 

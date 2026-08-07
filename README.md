@@ -79,6 +79,28 @@ The caption shows in the viewer and becomes the image's alt text.
 Photos with no EXIF date fall back to filename order, so if you're working with
 scans or stripped files, use `filename` and number them yourself.
 
+### The opening photograph
+
+The site opens on one photograph filling the screen, with your name over it.
+
+| Key | Purpose |
+|---|---|
+| `hero` | `false` reverts to the earlier layout — name on paper, photo below |
+| `hero_frame` | Filename without extension, e.g. `"harbour_dawn"`. Blank picks whichever sorts first |
+| `site_url` | Your full address. Needed so shared links preview with your photograph |
+
+### The About section
+
+Fill any of these in `config.json` and the section appears; leave them all empty
+and it disappears entirely.
+
+| Key | Purpose |
+|---|---|
+| `statement` | Two or three sentences. Blank line between paragraphs |
+| `available_for` | List of commission types |
+| `clients` | List of publications or clients. Leave `[]` if you'd rather not |
+| `portrait` | Filename of an image in the `about/` folder |
+
 ### Other settings
 
 | Key | Purpose |
@@ -89,10 +111,27 @@ scans or stripped files, use `filename` and number them yourself.
 
 ---
 
+## When photos don't appear
+
+The build log says exactly what happened. Go to the **Actions** tab, click the
+newest run, click **build**, and open the **Build gallery** step. The first line
+reads `Found N image(s) in photos/`.
+
+| What the log says | What to do |
+|---|---|
+| `Found 0 image(s)` | The files aren't in `photos/`. Check GitHub's own **Code** tab — if you can't see them there, they were never pushed. |
+| `Ignored N camera RAW file(s)` | RAW can't be read directly. Export JPEGs and add those. |
+| `Ignored N unrecognised file(s)` | Anything not JPEG, PNG, WebP, TIFF, or HEIC is skipped. |
+| `N file(s) failed to open` | Those files are corrupt or truncated. Re-export them. |
+| Log looks fine, site looks stale | Hard-refresh with **Ctrl + Shift + R**. |
+
+Sub-folders inside `photos/` are scanned too, so dragging a whole camera folder
+in works. Spaces and duplicate filenames are handled automatically.
+
 ## Previewing locally
 
 ```bash
-pip install Pillow
+pip install Pillow pillow-heif
 python scripts/build_gallery.py
 python -m http.server -d _site 8000
 ```

@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{name}} — {{tagline}}</title>
-<meta name="description" content="Photographs by {{name}}.">
+<meta name="description" content="{{description}}">
 <meta property="og:title" content="{{name}} — {{tagline}}">
+<meta property="og:description" content="{{description}}">
 <meta property="og:type" content="website">
+{{og_image}}
+<meta name="twitter:card" content="summary_large_image">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23F5F6F4'/><rect x='3' y='4.5' width='10' height='7' fill='none' stroke='%231D4E89' stroke-width='1.4'/></svg>">
 
@@ -19,23 +22,30 @@
 <body>
 <a class="skip" href="#gallery">Skip to photographs</a>
 
-<header class="masthead">
-  <div class="masthead__clip">
-    <h1>{{name}}</h1>
-  </div>
-
-  <div class="strip">
-    <span class="strip__tag">{{tagline}}</span>
-    <span class="strip__rule" aria-hidden="true"></span>
-    <span class="strip__meta" id="meta"></span>
-  </div>
-
-  <div class="controls" id="controls" hidden>
-    <div class="toggle" role="group" aria-label="Gallery view">
+<nav class="topbar" id="topbar">
+  <a class="topbar__name" href="#top">{{name}}</a>
+  <div class="topbar__right">
+    <div class="toggle" id="controls" role="group" aria-label="Gallery view" hidden>
       <button type="button" class="toggle__btn is-on" data-view="plates">Plates</button>
       <button type="button" class="toggle__btn" data-view="sheet">Sheet</button>
     </div>
+    <a class="topbar__link" href="#about">About</a>
+    <a class="topbar__link" href="mailto:{{email}}">Contact</a>
   </div>
+</nav>
+
+<header class="hero" id="top">
+  {{hero_img}}
+  <div class="hero__scrim"></div>
+  <div class="hero__type">
+    <div class="hero__clip"><h1>{{name}}</h1></div>
+    <div class="hero__strip">
+      <span class="hero__tag">{{tagline}}</span>
+      <span class="hero__rule" aria-hidden="true"></span>
+      <span class="hero__meta" id="meta"></span>
+    </div>
+  </div>
+  <a class="hero__cue" href="#gallery" aria-label="Scroll to photographs"><span></span></a>
 </header>
 
 <main>
@@ -53,6 +63,8 @@
       The gallery builds itself from whatever it finds.
     </p>
   </section>
+
+  {{about}}
 </main>
 
 <footer class="footer">
@@ -65,9 +77,10 @@
   <button class="lightbox__nav lightbox__nav--prev" id="lb-prev" aria-label="Previous photograph">←</button>
   <button class="lightbox__nav lightbox__nav--next" id="lb-next" aria-label="Next photograph">→</button>
   <figure class="lightbox__figure">
-    <img id="lb-img" alt="">
+    <div class="lightbox__stage"><img id="lb-img" alt=""></div>
     <figcaption class="label" id="lb-label"></figcaption>
   </figure>
+  <div class="filmstrip" id="filmstrip" aria-label="All frames"></div>
 </div>
 
 <script src="app.js"></script>

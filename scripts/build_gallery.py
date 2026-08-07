@@ -28,6 +28,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent.parent
 PHOTOS_IN = ROOT / "photos"
+ABOUT_IN = ROOT / "about"
 SRC = ROOT / "src"
 OUT = ROOT / "_site"
 
@@ -52,6 +53,13 @@ def load_config() -> dict:
         "email": "",
         "links": [],
         "footer": "",
+        "site_url": "",
+        "hero": True,
+        "hero_frame": "",
+        "statement": "",
+        "available_for": [],
+        "clients": [],
+        "portrait": "",
         "sort": "date-desc",
         "show_exif": True,
         "row_height": 360,
@@ -205,6 +213,71 @@ def sort_photos(photos: list[dict], mode: str) -> list[dict]:
     )
 
 
+def esc(text: str) -> str:
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def pick_hero(photos: list[dict], cfg: dict) -> dict | None:
+    """The named frame if config asks for one, otherwise whatever sorts first."""
+    if not photos or not cfg.get("hero", True):
+        return None
+    wanted = (cfg.get("hero_frame") or "").strip().lower()
+    if wanted:
+        for photo in photos:
+            if photo["name"].lower() == wanted:
+                return photo
+        print(f"  ! hero_frame '{wanted}' not found — using the first frame")
+    return photos[0]
+
+
+def build_about(cfg: dict) -> str:
+    """The section that turns a gallery into something you can be hired from."""
+    statement = cfg.get("statement", "").strip()
+    available = [a for a in cfg.get("available_for", []) if a]
+    clients = [c for c in cfg.get("clients", []) if c]
+    portrait = (cfg.get("portrait") or "").strip()
+    if not (statement or available or clients or portrait):
+        return ""
+
+    aside = ""
+    if portrait:
+        src = ABOUT_IN / portrait
+        if src.exists():
+            (OUT / "about").mkdir(exist_ok=True)
+            shutil.copy(src, OUT / "about" / portrait)
+            aside = (f'<div class="about__portrait">'
+                     f'<img src="about/{esc(portrait)}" alt="Portrait of {esc(cfg["name"])}" '
+                     f'loading="lazy" decoding="async"></div>')
+        else:
+            print(f"  ! portrait '{portrait}' not found in about/ — skipping")
+
+    cols = ""
+    if available:
+        cols += ('<div class="about__col"><h3>Available for</h3><ul>'
+                 + "".join(f"<li>{esc(a)}</li>" for a in available) + "</ul></div>")
+    if clients:
+        cols += ('<div class="about__col"><h3>Selected clients</h3><ul>'
+                 + "".join(f"<li>{esc(c)}</li>" for c in clients) + "</ul></div>")
+
+    body = ""
+    if statement:
+        paras = [pp.strip() for pp in statement.split("\n\n") if pp.strip()]
+        body = "".join(f"<p>{esc(pp)}</p>" for pp in paras)
+
+    contact = ""
+    if cfg.get("email"):
+        contact = (f'<a class="about__cta" href="mailto:{esc(cfg["email"])}">'
+                   f'{esc(cfg["email"])}</a>')
+
+    return (f'<section class="about" id="about">'
+            f'<div class="about__head"><span class="about__kicker">About</span></div>'
+            f'<div class="about__body">{body}{contact}</div>'
+            f'{aside}'
+            f'<div class="about__cols">{cols}</div>'
+            f'</section>')
+
+
 def main() -> int:
     cfg = load_config()
 
@@ -245,11 +318,15 @@ def main() -> int:
     for i, photo in enumerate(photos, 1):
         photo["frame"] = f"{i:02d}"
 
+    hero = pick_hero(photos, cfg)
+    hero_index = photos.index(hero) if hero else -1
+
     (OUT / "photos.json").write_text(
         json.dumps(
             {
                 "site": {k: cfg[k] for k in ("name", "tagline", "location", "email", "links", "footer")},
                 "rowHeight": cfg["row_height"],
+                "heroIndex": hero_index,
                 "photos": photos,
             },
             indent=2,
@@ -257,10 +334,29 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    # Copy the front end, substituting the few values that belong in the markup.
+    # Copy the front end, substituting the values that belong in the markup so
+    # the hero and the About text are in the source rather than fetched later.
     html = (SRC / "index.html").read_text(encoding="utf-8")
-    for key in ("name", "tagline"):
-        html = html.replace("{{" + key + "}}", str(cfg[key]))
+
+    hero_img = ""
+    if hero:
+        hero_img = (f'<img class="hero__img" src="{hero["src"]}" alt="" '
+                    f'fetchpriority="high" decoding="async">')
+    html = html.replace("{{hero_img}}", hero_img)
+    html = html.replace("{{about}}", build_about(cfg))
+
+    og = ""
+    base = (cfg.get("site_url") or "").rstrip("/")
+    if hero and base:
+        og = f'<meta property="og:image" content="{base}/{hero["src"]}">'
+    html = html.replace("{{og_image}}", og)
+
+    description = (cfg.get("statement") or "").strip().split("\n")[0][:180]
+    html = html.replace("{{description}}",
+                        esc(description or f"Photographs by {cfg['name']}."))
+
+    for key in ("name", "tagline", "email"):
+        html = html.replace("{{" + key + "}}", esc(str(cfg.get(key, ""))))
     (OUT / "index.html").write_text(html, encoding="utf-8")
     for asset in ("style.css", "app.js"):
         shutil.copy(SRC / asset, OUT / asset)
