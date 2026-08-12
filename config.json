@@ -7,18 +7,8 @@
   "footer": "All photographs \u00a9 Anivesh Sahu.",
   "hero": true,
   "hero_frame": "",
-  "statement": "Chasing the Clouds \u2014 the pictures carry the argument, this just tells someone who made them.",
-  "available_for": [
-    "Editorial",
-    "Portraiture",
-    "Documentary",
-    "Print sales"
-  ],
-  "clients": [
-    "The Guardian",
-    "Monocle",
-    "Aesop"
-  ],
+  "statement": "Chasing the Clouds",
+  
   "portrait": "portrait.jpg",
   "sort": "date-desc",
   "show_exif": true,

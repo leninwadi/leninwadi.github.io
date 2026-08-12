@@ -60,6 +60,9 @@ def load_config() -> dict:
         "available_for": [],
         "clients": [],
         "portrait": "",
+        "favicon": "monogram",
+        "favicon_bg": "#1D4E89",
+        "favicon_fg": "#F5F6F4",
         "sort": "date-desc",
         "show_exif": True,
         "row_height": 360,
@@ -231,6 +234,102 @@ def pick_hero(photos: list[dict], cfg: dict) -> dict | None:
     return photos[0]
 
 
+def initials(name: str) -> str:
+    """First letters of the first and last word — 'Anivesh Sahu' becomes 'AS'."""
+    words = [w for w in re.split(r"[\s._-]+", name.strip()) if w and w[0].isalnum()]
+    if not words:
+        return "?"
+    if len(words) == 1:
+        return words[0][:2].upper()
+    return (words[0][0] + words[-1][0]).upper()
+
+
+def build_favicon(cfg: dict) -> str:
+    """Writes the icon files and returns the <link> tags for the head."""
+    choice = (cfg.get("favicon") or "monogram").strip()
+    bg = cfg.get("favicon_bg", "#1D4E89")
+    fg = cfg.get("favicon_fg", "#F5F6F4")
+    tags = []
+
+    if choice.lower() in {"monogram", "initials", ""}:
+        mark = initials(cfg.get("name", ""))
+        # Drawn as SVG so it stays sharp on any display, at any size.
+        size = "30" if len(mark) < 2 else "25"
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+            f'<rect width="64" height="64" fill="{bg}"/>'
+            f'<text x="32" y="33" fill="{fg}" font-size="{size}" font-weight="700" '
+            'font-family="Helvetica,Arial,sans-serif" letter-spacing="-1" '
+            'text-anchor="middle" dominant-baseline="central">'
+            f'{esc(mark)}</text></svg>'
+        )
+        (OUT / "favicon.svg").write_text(svg, encoding="utf-8")
+        tags.append('<link rel="icon" href="favicon.svg" type="image/svg+xml">')
+
+        # Safari and Android home screens want a raster file.
+        try:
+            from PIL import ImageDraw, ImageFont
+
+            for px, fname in ((180, "apple-touch-icon.png"), (32, "favicon-32.png")):
+                img = Image.new("RGB", (px, px), bg)
+                draw = ImageDraw.Draw(img)
+                try:
+                    font = ImageFont.truetype(
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                        int(px * (0.46 if len(mark) > 1 else 0.56)))
+                except OSError:
+                    font = ImageFont.load_default()
+                # anchor="mm" centres on the glyphs themselves rather than the
+                # font's line box, which sits high because of ascender space.
+                try:
+                    draw.text((px / 2, px / 2), mark, font=font, fill=fg, anchor="mm")
+                except (TypeError, ValueError):
+                    box = draw.textbbox((0, 0), mark, font=font)
+                    draw.text(((px - box[2] - box[0]) / 2, (px - box[3] - box[1]) / 2),
+                              mark, font=font, fill=fg)
+                img.save(OUT / fname)
+            tags.append('<link rel="apple-touch-icon" href="apple-touch-icon.png">')
+            tags.append('<link rel="icon" href="favicon-32.png" sizes="32x32">')
+        except Exception as exc:
+            print(f"  ! couldn't render the raster icon: {exc}")
+
+        print(f"  · favicon: monogram '{mark}'")
+        return "\n".join(tags)
+
+    # Otherwise treat it as an image file, looked for in about/ then the root.
+    src = None
+    for folder in (ABOUT_IN, ROOT):
+        candidate = folder / choice
+        if candidate.exists():
+            src = candidate
+            break
+    if src is None:
+        print(f"  ! favicon '{choice}' not found in about/ — falling back to the monogram")
+        fallback = dict(cfg)
+        fallback["favicon"] = "monogram"
+        return build_favicon(fallback)
+
+    try:
+        with Image.open(src) as raw:
+            img = ImageOps.exif_transpose(raw).convert("RGB")
+            # Centre-crop to a square first; icons are square and squashing looks wrong.
+            side = min(img.size)
+            left = (img.width - side) // 2
+            top = (img.height - side) // 2
+            img = img.crop((left, top, left + side, top + side))
+            for px, fname in ((180, "apple-touch-icon.png"), (32, "favicon-32.png")):
+                img.resize((px, px), Image.LANCZOS).save(OUT / fname)
+    except Exception as exc:
+        print(f"  ! couldn't read favicon '{choice}': {exc}")
+        fallback = dict(cfg)
+        fallback["favicon"] = "monogram"
+        return build_favicon(fallback)
+
+    print(f"  · favicon: {choice}")
+    return ('<link rel="icon" href="favicon-32.png" sizes="32x32">\n'
+            '<link rel="apple-touch-icon" href="apple-touch-icon.png">')
+
+
 def build_about(cfg: dict) -> str:
     """The section that turns a gallery into something you can be hired from."""
     statement = cfg.get("statement", "").strip()
@@ -344,6 +443,7 @@ def main() -> int:
                     f'fetchpriority="high" decoding="async">')
     html = html.replace("{{hero_img}}", hero_img)
     html = html.replace("{{about}}", build_about(cfg))
+    html = html.replace("{{favicon}}", build_favicon(cfg))
 
     og = ""
     base = (cfg.get("site_url") or "").rstrip("/")
