@@ -10,53 +10,65 @@
 <meta property="og:type" content="website">
 {{og_image}}
 <meta name="twitter:card" content="summary_large_image">
-
 {{favicon}}
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<div class="ring" id="ring" aria-hidden="true"></div>
+<div class="loupe" id="loupe" aria-hidden="true"></div>
+
 <a class="skip" href="#gallery">Skip to photographs</a>
 
-<nav class="topbar" id="topbar">
+<header class="topbar">
   <a class="topbar__name" href="#top">{{name}}</a>
-  <div class="topbar__right">
-    <div class="toggle" id="controls" role="group" aria-label="Gallery view" hidden>
-      <button type="button" class="toggle__btn is-on" data-view="plates">Plates</button>
-      <button type="button" class="toggle__btn" data-view="sheet">Sheet</button>
-    </div>
-    <a class="topbar__link" href="#about">About</a>
-    <a class="topbar__link" href="mailto:{{email}}">Contact</a>
-  </div>
-</nav>
+  <nav class="topbar__right">
+    <a class="navlink" href="#gallery" id="nav-index">Index</a>
+    <a class="navlink" href="#about">About</a>
+    <a class="navlink" href="#contact">Contact</a>
+    <button class="navlink" id="hud-toggle" type="button" aria-pressed="true">HUD</button>
+  </nav>
+</header>
 
 <header class="hero" id="top">
   {{hero_img}}
   <div class="hero__scrim"></div>
   <div class="hero__type">
-    <div class="hero__clip"><h1>{{name}}</h1></div>
-    <div class="hero__strip">
-      <span class="hero__tag">{{tagline}}</span>
-      <span class="hero__rule" aria-hidden="true"></span>
-      <span class="hero__meta" id="meta"></span>
+    <div>
+      <div class="hero__clip"><h1 id="hero-title">{{name}}</h1></div>
+      <p class="hero__sub">{{tagline}}</p>
     </div>
+    <div class="hero__meta" id="meta"></div>
   </div>
-  <a class="hero__cue" href="#gallery" aria-label="Scroll to photographs"><span></span></a>
+  <span class="hero__cue" aria-hidden="true"></span>
 </header>
 
 <main>
-  <section class="lead" id="lead" aria-label="Opening photograph"></section>
-  <section class="gallery gallery--plates" id="gallery" aria-label="Photographs"></section>
+  <section class="series-index" id="series" hidden aria-label="Series">
+    <span class="label" id="series-label">Selected series</span>
+    <div class="series-list" id="series-list"></div>
+  </section>
+
+  <div class="viewbar" id="viewbar" hidden>
+    <div class="pills" role="group" aria-label="Gallery view">
+      <button type="button" class="pill is-on" data-view="index">Index</button>
+      <button type="button" class="pill" data-view="sheet">Contact Sheet</button>
+      <button type="button" class="pill" data-view="story">Story Mode</button>
+      <button type="button" class="pill" data-view="reel">Reel</button>
+    </div>
+    <div class="pills pills--filter" id="filters" role="group" aria-label="Show" hidden></div>
+    <span class="viewbar__count" id="viewcount"></span>
+  </div>
+
+  <section class="gallery gallery--index" id="gallery" aria-label="Photographs"></section>
 
   <section class="empty" id="empty" hidden>
-    <div class="empty__sheet" aria-hidden="true">
-      <span style="--r:3/2"></span><span style="--r:2/3"></span><span style="--r:1/1"></span>
-      <span style="--r:3/2"></span><span style="--r:4/5"></span><span style="--r:3/2"></span>
-    </div>
     <p class="empty__title">The roll is empty.</p>
     <p class="empty__body">
       Put image files in the <code>photos</code> folder, then commit and push.
@@ -65,22 +77,35 @@
   </section>
 
   {{about}}
+
+  <section class="contact" id="contact">
+    <span class="label">Get in touch</span>
+    <a class="contact__mail" id="contact-mail" href="mailto:{{email}}" data-magnetic>{{email}}</a>
+    <div class="contact__links" id="contact-links"></div>
+  </section>
 </main>
 
 <footer class="footer">
   <p id="footer-text"></p>
-  <p class="colophon">Built from the <code>photos</code> folder.</p>
+  <p id="footer-place"></p>
 </footer>
 
+<div class="hud" id="hud" hidden>
+  <span class="hud__dot" aria-hidden="true"></span>
+  <span id="hud-text">—</span>
+</div>
+
+<section class="story" id="story" hidden aria-label="Story mode"></section>
+<div class="story__bar" id="story-bar" hidden aria-hidden="true"></div>
+<button class="story__close" id="story-close" type="button" hidden>× Close</button>
+
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photograph viewer" hidden>
-  <button class="lightbox__close" id="lb-close" aria-label="Close viewer">Close</button>
-  <button class="lightbox__nav lightbox__nav--prev" id="lb-prev" aria-label="Previous photograph">←</button>
-  <button class="lightbox__nav lightbox__nav--next" id="lb-next" aria-label="Next photograph">→</button>
-  <figure class="lightbox__figure">
-    <div class="lightbox__stage"><img id="lb-img" alt=""></div>
-    <figcaption class="label" id="lb-label"></figcaption>
-  </figure>
-  <div class="filmstrip" id="filmstrip" aria-label="All frames"></div>
+  <button class="lb-btn lb-close" id="lb-close" type="button" aria-label="Close viewer">× Close</button>
+  <button class="lb-btn lb-prev" id="lb-prev" type="button" aria-label="Previous photograph">←</button>
+  <button class="lb-btn lb-next" id="lb-next" type="button" aria-label="Next photograph">→</button>
+  <figure class="lightbox__figure"><img id="lb-img" alt=""></figure>
+  <figcaption class="lb-cap" id="lb-cap"></figcaption>
+  <span class="lb-count" id="lb-count"></span>
 </div>
 
 <script src="app.js"></script>
