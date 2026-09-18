@@ -69,37 +69,6 @@ a { color: inherit; }
   transition: width .1s linear;
 }
 
-/* A trailing ring, but the native cursor stays visible — hiding it
-   breaks keyboard and touch users for the sake of a flourish. */
-.ring {
-  position: fixed; top: 0; left: 0; z-index: 9998;
-  width: 36px; height: 36px; margin: -18px 0 0 -18px;
-  border: 1px solid rgba(239,234,224,.55);
-  border-radius: 50%;
-  pointer-events: none;
-  mix-blend-mode: difference;
-  transition: width .4s var(--ease), height .4s var(--ease),
-              margin .4s var(--ease), border-color .3s, opacity .3s;
-  opacity: 0;
-}
-.ring.is-on { opacity: 1; }
-.ring.is-hot {
-  width: 84px; height: 84px; margin: -42px 0 0 -42px;
-  border-color: rgba(212,160,76,.85);
-}
-.ring.is-drag {
-  width: 104px; height: 104px; margin: -52px 0 0 -52px;
-  border-color: var(--accent);
-}
-.ring.is-drag::after {
-  content: "DRAG";
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: .56rem; letter-spacing: .22em;
-  color: var(--accent);
-}
-@media (pointer: coarse) { .ring { display: none; } }
-
 /* ------------------------------ header ----------------------------- */
 
 .topbar {
@@ -742,7 +711,7 @@ body.is-ready .hero__meta { opacity: 1; }
     transition-duration: .01ms !important;
   }
   .frame, .rv, .ch { opacity: 1 !important; transform: none !important; }
-  .grain, .ring { display: none; }
+  .grain { display: none; }
   .story { scroll-snap-type: none; }
 }
 

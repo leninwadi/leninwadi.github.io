@@ -14,7 +14,7 @@
   var galleryEl = $("gallery"), emptyEl = $("empty"), metaEl = $("meta");
   var viewbarEl = $("viewbar"), viewcountEl = $("viewcount");
   var storyEl = $("story"), storyBar = $("story-bar"), storyClose = $("story-close");
-  var hudEl = $("hud"), hudText = $("hud-text"), ringEl = $("ring");
+  var hudEl = $("hud"), hudText = $("hud-text");
   var lightbox = $("lightbox"), lbImg = $("lb-img");
   var lastFocused = null, storyObserver = null;
 
@@ -590,7 +590,6 @@
       down = true; moved = false;
       startX = e.pageX; startScroll = strip.scrollLeft;
       strip.classList.add("is-grabbing");
-      if (ringEl) ringEl.classList.add("is-drag");
     });
     window.addEventListener("mousemove", function (e) {
       if (!down) return;
@@ -602,7 +601,6 @@
       if (!down) return;
       down = false;
       strip.classList.remove("is-grabbing");
-      if (ringEl) ringEl.classList.remove("is-drag");
       setTimeout(function () { moved = false; }, 40);
     });
 
@@ -893,28 +891,7 @@
   });
   document.body.appendChild(totop);
 
-  /* ========================= cursor + magnet ======================== */
-
-  (function cursor() {
-    if (!ringEl || reduced()) return;
-    if (!window.matchMedia("(pointer: fine)").matches) return;
-
-    var mx = 0, my = 0, rx = 0, ry = 0, on = false;
-
-    window.addEventListener("mousemove", function (e) {
-      mx = e.clientX; my = e.clientY;
-      if (!on) { on = true; rx = mx; ry = my; ringEl.classList.add("is-on"); }
-      var hot = e.target.closest("a, button, .frame, .reel__card, .interlude, .scard");
-      ringEl.classList.toggle("is-hot", !!hot && !ringEl.classList.contains("is-drag"));
-    }, { passive: true });
-
-    (function loop() {
-      rx += (mx - rx) * 0.16;
-      ry += (my - ry) * 0.16;
-      ringEl.style.transform = "translate(" + rx + "px," + ry + "px)";
-      window.requestAnimationFrame(loop);
-    })();
-  })();
+  /* ============================= magnet ============================= */
 
   (function magnetic() {
     if (reduced() || !window.matchMedia("(pointer: fine)").matches) return;
